@@ -1,0 +1,13 @@
+Implemented features of C:
+This shows where the project is at
+
+
+<TranslationUnit> ::= <Function>
+<Function> ::= "int" <id> "(" ")" "{" <Statement> "}"
+<Statement> ::= "return" <Expression> ";"
+<Expression> ::= <Term> { ("+" | "-") <Term> }
+<Term> ::= <Factor> { ("*" | "/") <Factor> }
+<Factor> ::= "(" <Expression> ")" | <UnaryOp> <Factor> | <int>
+<UnaryOp> ::= "!" | "~" | "-"
+<int> ::= [1-9][0-9]*
+<id> ::= [a-zA-Z][a-zA-Z0-9_]*
