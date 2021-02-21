@@ -21,10 +21,13 @@ import Foundation
 // var compiler = Compiler()
 // compiler.run()
 
+var test = TestCases()
+test.run()
+
 var lexer = Lexer()
 
 // FIXME: TODO: Let the user pass the file through the command line
-lexer.read(nameFile: "/Users/cosmejordan/Desktop/test.c")
+lexer.read(filename: "/Users/cosmejordan/Documents/Programming/Swift/Projects/Swift C-Compiler/src/TestCases/C Programs/Succeed/Operations/test3.c")
 lexer.run()
 
 var lexerTokens = lexer.getTokens()
@@ -34,5 +37,5 @@ var parser = Parser(tokens: lexerTokens)
 var parseAST = parser.parseAST()
 print(parseAST)
 
-var codeGen = CodeGeneration(parseAST: parseAST)
-print(codeGen.generateCode())
+//var codeGen = CodeGeneration(parseAST: parseAST)
+//print(codeGen.generateCode())

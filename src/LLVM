@@ -1,0 +1,56 @@
+
+Run those commands to convert an assembly to .o code
+
+$ clang -g -c -x assembler assembly.s
+$ clang assembly.o -o assembly
+$ ./assembly # To run it
+$ lldb assembly
+(lldb) target create "assembly"
+(lldb) run
+
+# ==============================================================================
+# ==============================================================================
+# ==============================================================================
+# Use of the lldb debugger
+
+reference: http://lldb.llvm.org/use/map.html
+
+# Quit lldb
+(lldb) quit
+
+# breakpoint at main
+(lldb) breakpoint set --name  main
+# Or
+(lldb) br s -n main
+# Or
+(lldb) b main
+
+# Source level single step
+(lldb) n
+# Or
+(lldb) s
+
+# Instruction level single step
+(lldb) ni
+# Or
+(lldb) si
+
+# Step out of frame
+(lldb) finish
+
+# Read registers
+(lldb) register read
+# Or
+(lldb) re r
+
+# Read ALL registers
+(lldb) register read --all
+# Or
+(lldb) re r -a
+
+
+# Show registers read rax rsp rbp
+(lldb) register read rax rsp rbp
+
+
+

@@ -24,21 +24,67 @@ public enum Token: Equatable {
     // Keywords
     case RETURN // return
     case INT    // int
-    
+
+    case FOR
+    case WHILE
+    case DO
+    case SWITCH
+    case GOTO
+    case CONTINUE
+    case BREAK
+    case IF
+    case ELSE
+    case CASE
+    case DEFAULT
+
+    // TODO: not really a keyword
+    case QUESTION_MARK
+
     // Unary Operators
     case MINUS // -
     case NOT // !
     case TIMES // *
+    case DIVIDE // /
     case PLUS // +
     case BITWISE_AND // &
     case BITWISE_OR // |
     case TILDE // ~
+    case MODULO // %
+
+    case INCREMENT
+    case DECREMENT
     
     
     // Logical Operators
     case LOGICAL_AND // &&
     case LOGICAL_OR // ||
+
+    case SHIFT_LEFT // >>
+    case SHIFT_RIGHT // <<
+
+    case XOR // ^
     
+    // Relational operators
+    case RELATIONAL_EQUAL // ==
+    case RELATIONAL_NOT_EQUAL // !=
+    case SMALLER // <
+    case SMALLER_EQUAL // <=
+    case BIGGER // >
+    case BIGGER_EQUAL // >=
+
+    // Assignment Operators
+    case EQUAL // =
+    case EQUAL_TIMES // *=
+    case EQUAL_DIVIDE // /=
+    case EQUAL_MODULO // %=
+    case EQUAL_PLUS // +=
+    case EQUAL_MINUS // -=
+    case EQUAL_SHIFT_LEFT // <<=
+    case EQUAL_SHIFT_RIGHT // >>=
+    case EQUAL_AND // &=
+    case EQUAL_XOR // ^=
+    case EQUAL_OR // |=
+
     // Variables
     case ID(String) // [a-z-A-Z]([a-z-A-Z]|[0-9])*
     case CONSTANT_INT(Int) // 2, 3, 4, 5,...
@@ -46,6 +92,7 @@ public enum Token: Equatable {
     // Terminator Symbols
     case LEFT_PAREN    // "("
     case RIGHT_PAREN   // ")"
+    case COLON     // ":"
     case SEMICOLON     // ";"
     case OPEN_BRACE    // "{"
     case CLOSING_BRACE // "}"
@@ -63,10 +110,62 @@ public enum Token: Equatable {
             //    Notice that we have to use \\b because
             //    it is a specificty of the language
         
+            // Comments
+            ("\\/\\/.*", {_ in .SINGLE_LINE_COMMENT}),
+        
             // ---------------------------------------------------------
             // Keywords
             ("\\breturn\\b", {_ in .RETURN}),
             ("\\bint\\b", {_ in .INT}),
+            ("\\bfor\\b", {_ in .FOR}),
+            ("\\bwhile\\b", {_ in .WHILE}),
+            ("\\bdo\\b", {_ in .DO}),
+            ("\\bswitch\\b", {_ in .SWITCH}),
+            ("\\bgoto\\b", {_ in .GOTO}),
+            ("\\bcontinue\\b", {_ in .CONTINUE}),
+            ("\\bbreak\\b", {_ in .BREAK}),
+            ("\\bif\\b", {_ in .IF}),
+            ("\\belse\\b", {_ in .ELSE}),
+            ("\\bcase\\b", {_ in .CASE}),
+            ("\\default\\b", {_ in .DEFAULT}),
+
+            // TODO: not really a keyword
+            ("\\?", {_ in .QUESTION_MARK}),
+
+            ("\\+\\+", {_ in .INCREMENT}),
+            ("--", {_ in .DECREMENT}),
+
+
+            // TODO Check this
+            // Relational operator
+            ("==", {_ in .RELATIONAL_EQUAL}),
+            ("!=", {_ in .RELATIONAL_NOT_EQUAL}),
+            
+            ("=", {_ in .EQUAL}),
+            ("\\*=", {_ in .EQUAL_TIMES}),
+            ("\\/=", {_ in .EQUAL_DIVIDE}),
+            ("%=", {_ in .EQUAL_MODULO}),
+            ("\\+=", {_ in .EQUAL_PLUS}),
+            ("-=", {_ in .EQUAL_MINUS}),
+            (">>=", {_ in .EQUAL_SHIFT_RIGHT}),
+            ("<<=", {_ in .EQUAL_SHIFT_LEFT}),
+            ("&=", {_ in .EQUAL_AND}),
+            ("^=", {_ in .EQUAL_XOR}),
+            ("\\|=", {_ in .EQUAL_OR}),
+
+            ("\\^", {_ in .XOR}),
+
+            (">>", {_ in .SHIFT_RIGHT}),
+            ("<<", {_ in .SHIFT_LEFT}),
+
+            ("<=", {_ in .SMALLER_EQUAL}),
+            ("<", {_ in .SMALLER}),
+            (">=", {_ in .BIGGER_EQUAL}),
+            (">", {_ in .BIGGER}),
+
+            // Logical Operators
+            ("&&", {_ in .LOGICAL_AND}),
+            ("\\|\\|", {_ in LOGICAL_OR}),
 
             // Unary Operators
             ("-", {_ in .MINUS}),
@@ -74,12 +173,10 @@ public enum Token: Equatable {
             ("\\|", {_ in BITWISE_OR}),
             ("&", {_ in .BITWISE_AND}), // Or address
             ("~", {_ in .TILDE}),
-            ("\\*", {_ in .TIMES}), // Or pointer
+            ("%", {_ in .MODULO}),
             ("\\+", {_ in .PLUS}),
-
-            // Logical Operators
-            ("&&", {_ in .LOGICAL_AND}),
-            ("\\|\\|", {_ in LOGICAL_OR}),
+            ("\\*", {_ in .TIMES}), // Or pointer
+            ("\\/", {_ in .DIVIDE}),
 
             // ---------------------------------------------------------
             // Variables
@@ -95,12 +192,10 @@ public enum Token: Equatable {
             // Terminator Symbols
             ("\\(", {_ in .LEFT_PAREN}),
             ("\\)", {_ in .RIGHT_PAREN}),
+            (":", {_ in .COLON}),
             (";", {_ in .SEMICOLON}),
             ("\\{", {_ in .OPEN_BRACE}),
-            ("\\}", {_ in .CLOSING_BRACE}),
-            
-            // Comments
-            ("\\/\\/.*", {_ in .SINGLE_LINE_COMMENT})
+            ("\\}", {_ in .CLOSING_BRACE})
         ]
     }
     
@@ -112,7 +207,20 @@ public enum Token: Equatable {
         switch (lhs, rhs) {
 
         // Keyword
-        case (RETURN, RETURN), (INT, INT):
+        case (RETURN, RETURN),
+             (INT, INT),
+             (FOR, FOR),
+             (WHILE, WHILE),
+             (DO, DO),
+             (SWITCH, SWITCH),
+             (GOTO, GOTO),
+             (CONTINUE, CONTINUE),
+             (BREAK, BREAK),
+             (IF, IF),
+             (ELSE, ELSE),
+
+            // TODO: not really a keyword
+            (QUESTION_MARK, QUESTION_MARK):
             return true
 
         // Operators
@@ -124,7 +232,32 @@ public enum Token: Equatable {
              (BITWISE_AND, BITWISE_AND),
              (TIMES, TIMES),
              (PLUS, PLUS),
-             (TILDE, TILDE):
+             (TILDE, TILDE),
+             (DIVIDE, DIVIDE),
+             (RELATIONAL_EQUAL, RELATIONAL_EQUAL),
+             (RELATIONAL_NOT_EQUAL, RELATIONAL_NOT_EQUAL),
+             (SMALLER, SMALLER),
+             (SMALLER_EQUAL, SMALLER_EQUAL),
+             (BIGGER, BIGGER),
+             (BIGGER_EQUAL, BIGGER_EQUAL),
+             (EQUAL, EQUAL),
+             (EQUAL_TIMES, EQUAL_TIMES),
+             (EQUAL_DIVIDE, EQUAL_DIVIDE),
+             (EQUAL_MODULO, EQUAL_MODULO),
+             (EQUAL_PLUS, EQUAL_PLUS),
+             (EQUAL_MINUS, EQUAL_MINUS),
+             (EQUAL_SHIFT_LEFT, EQUAL_SHIFT_LEFT),
+             (EQUAL_SHIFT_RIGHT, EQUAL_SHIFT_RIGHT),
+             (EQUAL_AND, EQUAL_AND),
+             (EQUAL_XOR, EQUAL_XOR),
+             (EQUAL_OR, EQUAL_OR),
+             (MODULO, MODULO),
+             (SHIFT_LEFT, SHIFT_LEFT),
+             (SHIFT_RIGHT, SHIFT_RIGHT),
+             (XOR, XOR),
+             (INCREMENT, INCREMENT),
+             (DECREMENT, DECREMENT):
+
             return true
 
         // Variables
@@ -134,6 +267,7 @@ public enum Token: Equatable {
         // Terminator Symbols
         case (LEFT_PAREN, LEFT_PAREN),
              (RIGHT_PAREN, RIGHT_PAREN),
+             (COLON, COLON),
              (SEMICOLON, SEMICOLON),
              (OPEN_BRACE, OPEN_BRACE),
              (CLOSING_BRACE, CLOSING_BRACE):
@@ -170,9 +304,9 @@ class Lexer {
     init() {
     }
 
-    func read(nameFile: String) {
+    func read(filename: String) {
         do {
-            let nSString = try NSString(contentsOfFile: nameFile, encoding: String.Encoding.utf8.rawValue)
+            let nSString = try NSString(contentsOfFile: filename, encoding: String.Encoding.utf8.rawValue)
             fileInput = nSString as String
         } catch{
             // FIXME: TODO: Handle Error
@@ -196,14 +330,14 @@ class Lexer {
     func getNextMatch(code: String) -> (Token.Lexing, String)? {
         let matchedOptio = Token.lexing.first(where: {
             regex, lex in
-            lexer.getFirstMatch(code: code, regex: regex) != nil
+            getFirstMatch(code: code, regex: regex) != nil
         })
         
         if let matched = matchedOptio {
             // This guarantees that matched is not nil so tokenFunction must exist
-    
+
             let (regex, tokenFunction) = matched
-            let firstMatch = lexer.getFirstMatch(code: code, regex: regex)!
+            let firstMatch = getFirstMatch(code: code, regex: regex)!
         
            return (tokenFunction, firstMatch)
         } else {
@@ -230,7 +364,7 @@ class Lexer {
     
     func run() {
         var code = fileInput.trimmingCharacters(in: .whitespacesAndNewlines)
-
+        print(code)
         while code != "" {
             if let next = getNextMatch(code: code) {
                 let (tokenFunction, firstMatch) = next

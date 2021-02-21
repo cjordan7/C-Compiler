@@ -1,13 +1,99 @@
 Implemented features of C:
 This shows where the project is at
 
+{} in EBNF it means it can be repeated zero, one or more times
+
+TODO Implement:
+---------------
+
+<CastExpression> ::= <UnaryExpression>
+
+<UnaryExpression> ::= <PostfixExpression>
+                     | ++ <UnaryExpression>
+                     | -- <UnaryExpression>
+                     | <UnaryOperator> <CastExpression>
+                     | sizeof <UnaryExpression>
+                     | sizeof <type-name>
+
+<PostfixExpression> ::= <PrimaryExpression> ({ "[" <Expression> ] "}"
+                       |  "(" {<AssignmentExpression>} ")"
+                       |  "." <identifier>
+                       |  "->" <identifier>
+                       | "++"
+                       | "--")
+
+<PrimaryExpression> ::= <id>
+                       | <Constant>
+                       | <String>
+                       | "(" <Expression> ")"
+
+<Constant> ::= <integer-constant>
+             | <character-constant>
+             | <floating-constant>
+             | <enumeration-constant>
+
+<UnaryOperator> ::= &
+                   | *
+                   | +
+                   | -
+                   | ~
+                   | !
+
+
+// Old one, change with new above
+Implemented:
+------------
 
 <TranslationUnit> ::= <Function>
-<Function> ::= "int" <id> "(" ")" "{" <Statement> "}"
-<Statement> ::= "return" <Expression> ";"
-<Expression> ::= <Term> { ("+" | "-") <Term> }
-<Term> ::= <Factor> { ("*" | "/") <Factor> }
-<Factor> ::= "(" <Expression> ")" | <UnaryOp> <Factor> | <int>
-<UnaryOp> ::= "!" | "~" | "-"
+
+<Function> ::= "int" <id> "(" ")" <CompoundStatement>
+<CompoundStatement> ::= "{" {<Statement> | <Declaration>} "}"
+<Declaration> ::= "int" <id> [ = <Expression> ] ";"
+
+<Statement> ::= <ExpressionStatement>
+              | <CompoundStatement>
+              | <SelectionStatement>
+              | <IterationStatemments>
+              | <JumpStatement>
+              | LabeledStatement
+
+<LabeledStatement> ::= <id> : <Statement>
+                      | case <ConditionalExpression> : <Statement>
+                      | default : <Statement>
+
+<ExpressionStatement> ::= [<Expression>] ";"
+
+<JumpStatement> :: = "goto" <id> ";"
+                   | "continue" ";"
+                   | "break" ";"
+                   | "return" [<Expression>] ";"
+
+<SelectionStatement> ::= "if" "(" <Expression> ")" <Statement>
+                        | "if" "(" <Expression> ")" <Statement> "else" <Statement>
+                        | "switch" "(" <Expression> ")" <Statement>
+
+<IterationStatement> ::= "while" "(" <Expression> ")" <Statement>
+                        | "do" <Statement> "while" "(" <Expression> ) ";"
+                        | "for" ( [<Expression>] ";" [<expression>] ";" [<Expression>] ")" <Statement>
+
+<Expression> ::= <id> "=" <Expression> | <ConditionalExpression>
+
+<ConditionalExpression> ::= <LogicalOrExpression> [ "?" <Expression> ":" <ConditionalExpression> ]
+<LogicalOrExpression> ::= LogicalAndExpression {"||" LogicalAndExpression}
+<LogicalAndExpression> ::= InclusiveOrExpression {"&&" InclusiveOrExpression}
+<InclusiveOrExpression> ::= ExclusiveOrExpression {"|" ExclusiveOrExpression}
+<ExclusiveOrExpression> ::= AndExpression {"^" AndExpression}
+<AndExpression> ::= EqualityExpression {"&" EqualityExpression}
+<EqualityExpression> ::= RelationalExpression {('==' | '!=') RelationalExpression}
+<RelationalExpression> ::= ShiftExpression {("<" | ">" | "<=" | ">=") ShiftExpression}
+<ShiftExpression> ::= AdditiveExpression {"<<" | ">>" AdditiveExpression}
+<AdditiveExpression> ::= <Term> { ("+" | "-") <Term> }
+<Term> ::= <Factor> { ("*" | "/" | "%") <Factor> }
+<Factor> ::= "(" <Expression> ")" | <unaryOp> <Factor> | <int> | <id>
+<UnaryOp> ::= "!" | "~" | "-" | ++ | --
 <int> ::= [1-9][0-9]*
 <id> ::= [a-zA-Z][a-zA-Z0-9_]*
+
+References:
+https://www.lysator.liu.se/c/ANSI-C-grammar-y.html#declaration-specifiers
+https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
