@@ -74,7 +74,7 @@ Implemented:
 
 <IterationStatement> ::= "while" "(" <Expression> ")" <Statement>
                         | "do" <Statement> "while" "(" <Expression> ) ";"
-                        | "for" ( [<Expression>] ";" [<expression>] ";" [<Expression>] ")" <Statement>
+                        | "for" ( [<Expression>] ";" [<Expression>] ";" [<Expression>] ")" <Statement>
 
 <Expression> ::= <id> "=" <Expression> | <ConditionalExpression>
 

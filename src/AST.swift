@@ -339,7 +339,7 @@ class SelectionStatement: Node, BNFOrExpression {
         ""
     }
 
-    var expression: Expression? = nil
+    var expression: Expression
     var insideStatement: Statement? = nil
     var elseStatement: Statement? = nil
 
@@ -373,6 +373,8 @@ class SelectionStatement: Node, BNFOrExpression {
 //                        | "do" <Statement> "while" "(" <Expression> ) ";"
 //                        | "for" ( [<Expression>] ";" [<Expression>] ";"
 //                                  [<Expression>] ")" <Statement>
+//                        | "for" "(" <Declaration> [Expression] ";"
+//                                    <Expression> ")" <Statement>
 class IterationStatement: Node, BNFOrExpression {
     var orExpr: Choice
 
@@ -382,6 +384,7 @@ class IterationStatement: Node, BNFOrExpression {
         ""
     }
 
+    var declaration: Declaration? = nil
     var expression: Expression? = nil
     var expression2: Expression? = nil
     var expression3: Expression? = nil
@@ -416,6 +419,23 @@ class IterationStatement: Node, BNFOrExpression {
         self.insideStatement = insideStatement
         self.orExpr = .THREE
     }
+
+//                        | "for" "(" <Declaration> [Expression] ";"
+//                                    <Expression> ")" <Statement>
+    init(declaration: Declaration?,
+         expression: Expression?,
+         expression2: Expression?,
+         insideStatement: Statement,
+         depth: Int) {
+        self.depth = depth
+        self.declaration = declaration
+        self.expression = expression
+        self.expression2 = expression2
+        self.insideStatement = insideStatement
+        self.orExpr = .FOUR
+    }
+
+
 }
 
 // <Expression> ::= <id> "=" <Expression> | <ConditionalExpression>

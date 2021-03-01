@@ -308,6 +308,8 @@ class Parser {
     //                        | "do" <Statement> "while" "(" <Expression> ) ";"
     //                        | "for" ( [<Expression>] ";" [<Expression>] ";"
     //                                  [<Expression>] ")" <Statement>
+    //                        | "for" "(" <Declaration> [Expression] ";"
+    //                                    <Expression> ")" <Statement>
     private func parseIterationStatement(depth: Int) -> IterationStatement {
         let next = matchOneOf(oneOf: [.WHILE, .DO, .FOR])
 
@@ -326,19 +328,43 @@ class Parser {
             } else if(next == .FOR) {
 //                "for" ( [<Expression>] ";" [<Expression>] ";"
 //                        [<Expression>] ")" <Statement>
+//              | "for" "(" [<Declaration>] [Expression] ";"
+//                          <Expression> ")" <Statement>
+
+                var declaration: Declaration? = nil
                 var expression: Expression? = nil
                 var expression2: Expression? = nil
                 var expression3: Expression? = nil
 
                 if(checkToken() != .SEMICOLON) {
-                    expression = parseExpression(depth: depth + 1)
+                    // check
+                    // TODO: Have to check for declaration, so maybe int, ...
+                    if(checkToken() == .INT) {
+                        declaration = parseDeclaration(depth: depth + 1)
+                    } else {
+                        expression = parseExpression(depth: depth + 1)
+                        matchDelimiter(token: .SEMICOLON)
+                    }
+                } else {
+                    matchDelimiter(token: .SEMICOLON)
                 }
-                matchDelimiter(token: .SEMICOLON)
 
                 if(checkToken() != .SEMICOLON) {
                     expression2 = parseExpression(depth: depth + 1)
                 }
+
                 matchDelimiter(token: .SEMICOLON)
+
+                if(declaration != nil) {
+                    matchDelimiter(token: .RIGHT_PAREN)
+                    let statement = parseStatement(depth: depth + 1)
+
+                    return IterationStatement(declaration: declaration,
+                                              expression: expression,
+                                              expression2: expression2,
+                                              insideStatement: statement,
+                                              depth: depth + 1)
+                }
 
                 if(checkToken() != .SEMICOLON) {
                     expression3 = parseExpression(depth: depth + 1)
