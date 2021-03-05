@@ -8,13 +8,23 @@
 
 import Foundation
 
+class VariablesRepresentation {
+    var offset = 0
+
+    // TODO: Change that into array of types ?
+    var type = ""
+    // TODO: setSize as well ?
+//    var
+}
+
 class SymbolTable {
     var functions = [String: String]()
-    var variables = [String: String]()
+    var variables = [String: VariablesRepresentation]()
 
     // For goto, continue, break
     var jumps = [String: String]()
 
+    var rbpValue = 0
     var currentFunction: String = ""
     var jumpEndFunction: String = ""
 
@@ -23,7 +33,7 @@ class SymbolTable {
 
 //    func addVar
 
-    func copyVariables(with: [String: String]) -> SymbolTable {
+    func copyVariables(with: [String: VariablesRepresentation]) -> SymbolTable {
         let newSymbolTable = SymbolTable()
         newSymbolTable.functions = self.functions
         newSymbolTable.endJumpLabel = endJumpLabel

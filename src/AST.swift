@@ -719,6 +719,8 @@ class Factor: Node, BNFOrExpression {
     var factor: Factor?
     
     var id: Token?
+    var isId: Bool = false
+
 
     init(expression: Expression, depth: Int) {
         self.expression = expression
@@ -740,13 +742,18 @@ class Factor: Node, BNFOrExpression {
         self.orExpr = .TWO
     }
     
-    init(id: Token, depth: Int) {
+    init(id: Token, depth: Int, isId: Bool = false) {
         self.expression = nil
         self.unaryOp = nil
         self.factor = nil
         self.id = id
         self.depth = depth;
-        
-        self.orExpr = .THREE
+        self.isId = isId
+
+        if(isId) {
+            self.orExpr = .FOUR
+        } else {
+            self.orExpr = .THREE
+        }
     }
 }

@@ -33,14 +33,14 @@ class TestCases {
     }
     
     func runThroughFiles(filename: String) {
-        var lexer = Lexer()
+        let lexer = Lexer()
         print(filename)
 //        print(filename == "/Users/cosmejordan/Documents/Programming/Swift/Projects/Swift C-Compiler/src/TestCases/C Programs/Succeed/Operations/test3.c")
         // FIXME: TODO: Let the user pass the file through the command line
         lexer.read(filename: filename)
         lexer.run()
 //
-        var lexerTokens = lexer.getTokens()
+        let lexerTokens = lexer.getTokens()
         print(lexerTokens)
 //
 //        var parser = Parser(tokens: lexerTokens)

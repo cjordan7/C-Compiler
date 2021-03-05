@@ -91,37 +91,55 @@ class CodeGeneration {
     // <CompoundStatement> ::= "{" {<Statement> | <Declaration>} "}"
     private func generateCompoundStatement(_ cS: CompoundStatement,
                                            _ sT: SymbolTable) -> String {
-        var currentVars = [String: String]()
-        var string = ""
+        var currentVars = [String: VariablesRepresentation]()
+        var code = ""
         for node in cS.many {
-            string += "\n"
+            code += "\n"
             switch node {
             case let decl as Declaration:
-                let (code, variable, returnType) = generateDeclaration(decl)
+                let (varCode, variable, varRepr, rbp) = generateDeclaration(decl, sT)
 
                 if let _ = currentVars[variable] {
-                    fatalError()
+                    fatalError("Variable \(variable) has already been declared")
                 } else {
-                    currentVars[variable] = returnType
+//                    code += PUSH_RAX
+                    currentVars[variable] = varRepr
                 }
 
-                string += code
+                sT.rbpValue = rbp
+
+                code += varCode
             case let stat as Statement:
-                string += generateStatement(stat, sT.copyVariables(with: currentVars))
+                code += generateStatement(stat, sT.copyVariables(with: currentVars))
             default:
                 // TODO: Should not happen
-                fatalError()
+                fatalError("This should not happen")
             }
         }
 
-        return string.tabify
+        return code.tabify
     }
 
     // <Declaration> ::= "int" <id> [ = <Expression> ] ";"
-    private func generateDeclaration(_ declaration: Declaration) -> (String, String, String) {
+    private func generateDeclaration(_ declaration: Declaration,
+                                     _ sT: SymbolTable) -> (String, String, VariablesRepresentation, Int) {
+        var code = ""
+        if let expr = declaration.expression {
+            code += generateExpression(expr, sT)
+            code += PUSH_RAX
+        }
+
+        let varRepr = VariablesRepresentation()
+
+        // TODO "int", other types...
+        var rbpValue = sT.rbpValue
+        rbpValue -= 4
+        varRepr.offset = 0 - rbpValue
+        varRepr.type = "int"
 //        declaration.
 //        return generateExpression(declaration.expression)
         // TODO...
+        return (code, declaration.id.value, varRepr, rbpValue)
     }
 
     // <Statement> ::= <ExpressionStatement>
@@ -132,22 +150,22 @@ class CodeGeneration {
     //              | <LabeledStatement>
     private func generateStatement(_ statement: Statement,
                                    _ sT: SymbolTable) -> String {
-        var string = ""
+        var code = ""
         if let expreStat = statement.expressionStatement {
-            string = generateExpressionStatement(expreStat, sT)
+            code = generateExpressionStatement(expreStat, sT)
         } else if let compState = statement.compoundStatement {
-            string = generateCompoundStatement(compState, sT)
+            code = generateCompoundStatement(compState, sT)
         } else if let selStat = statement.selectionStatement {
-            string = generateSelectionStatement(selStat, sT)
+            code = generateSelectionStatement(selStat, sT)
         } else if let itStat = statement.iterationStatement {
-            string = generateIterationStatement(itStat, sT)
+            code = generateIterationStatement(itStat, sT)
         } else if let jumStat = statement.jumpStatement {
-            string = generateJumpStatement(jumStat, sT)
+            code = generateJumpStatement(jumStat, sT)
         } else if let labelStat = statement.labeledStatement {
-            string = generateLabeledStatement(labelStat, sT)
+            code = generateLabeledStatement(labelStat, sT)
         }
 
-        return string.tabify
+        return code.tabify
 //        return "\(generateExpression(statement.expression))" +
 //            "ret".tabify
     }
@@ -157,55 +175,55 @@ class CodeGeneration {
     //                       | default : <Statement>
     private func generateLabeledStatement(_ lS: LabeledStatement,
                                           _ sT: SymbolTable) -> String {
-        var string = ""
+        var code = ""
         if let id = lS.id {
             // id.value
             // TODO: This is not exactly correct, should be unique for each functions
             sT.jumps[id.value+sT.currentFunction] = id.value+sT.currentFunction
 
             //TODO: Refactor
-            string += "\n"
+            code += "\n"
             if let sat = lS.statement {
-                string += generateStatement(sat, sT)
+                code += generateStatement(sat, sT)
             }
         } else if let condExpre = lS.conditionalExpression {
             // Switch was never defined, so no case can be defined
             if(sT.endJumpLabel == nil) {
-                fatalError()
+                fatalError("Found a \"case\" without a switch")
             }
 
-            string = generateConditionalExpression(condExpre, sT)
-            string += POP_RCX
-            string += "cmpl %rcx, %rax"
+            code = generateConditionalExpression(condExpre, sT)
+            code += POP_RCX
+            code += "cmpl %rcx, %rax"
 
-            string += "push %rcx"
+            code += "push %rcx"
             let (var1, _) = generateNewLabel(labelName: "CASE_LABEL")
-            string += "jne \(var1)"
+            code += "jne \(var1)"
 
             //TODO: Refactor
-            string += "\n"
+            code += "\n"
             if let sat = lS.statement {
-                string += generateStatement(sat, sT)
-                string += "jmp \(sT.endJumpLabel!)"
+                code += generateStatement(sat, sT)
+                code += "jmp \(sT.endJumpLabel!)"
             }
 
-            string += "\(var1)"
+            code += "\(var1)"
         } else if let stat = lS.statement { // Default...
-            string = generateStatement(stat, sT)
+            code = generateStatement(stat, sT)
         }
 
-        return string.tabify
+        return code.tabify
     }
 
     // <ExpressionStatement> ::= [<Expression>] ";"
     private func generateExpressionStatement(_ exStat: ExpressionStatement,
                                             _ sT: SymbolTable) -> String {
-        var string = ""
+        var code = ""
         if let expression = exStat.expression {
-            string = generateExpression(expression, sT)
+            code = generateExpression(expression, sT)
         }
 
-        return string.tabify
+        return code.tabify
     }
 
     // <JumpStatement> :: = "goto" <id> ";"
@@ -215,31 +233,31 @@ class CodeGeneration {
     private func generateJumpStatement(_ jumStat: JumpStatement,
                                        _ sT: SymbolTable) -> String {
 
-        var string = ""
+        var code = ""
 
         switch jumStat.orExpr {
         case .ONE: // goto
-            string = "jmp \(jumStat.id!)"
+            code = "jmp \(jumStat.id!)"
             break
         case .TWO: // continue
-            string = "jmp \(sT.continueLabel)"
+            code = "jmp \(sT.continueLabel)"
             break
         case .THREE: // break
             if let endJump = sT.endJumpLabel {
-                string = "jmp \(endJump)"
+                code = "jmp \(endJump)"
             } else {
-                // Break should be inside, loop or switch
-                fatalError()
+                fatalError("break should be inside a loop or a switch")
             }
             break
         case .FOUR: // Return expression
             // TODO: ...
+            fatalError("TODO...")
             break
         default:
-            fatalError()
+            fatalError("This should not happen")
         }
 
-        return string.tabify
+        return code.tabify
     }
 
     // <SelectionStatement> ::= "if" "(" <Expression> ")" <Statement>
@@ -248,33 +266,33 @@ class CodeGeneration {
     //                        | "switch" "(" <Expression> ")" <Statement>
     private func generateSelectionStatement(_ selStat: SelectionStatement,
                                             _ sT: SymbolTable) -> String {
-        var string = generateExpression(selStat.expression, sT)
+        var code = generateExpression(selStat.expression, sT)
         if(selStat.orExpr == .ONE || selStat.orExpr == .TWO) {
-            string += "\n"
-            string += "cmpl $0, %rax"
+            code += "\n"
+            code += "cmpl $0, %rax"
             let (var1, var2) = generateNewLabel(labelName: "CONDITIONAL_LABEL")
-            string += "je \(var1)"
-            string += generateStatement(selStat.insideStatement!, sT)
+            code += "je \(var1)"
+            code += generateStatement(selStat.insideStatement!, sT)
 
-            string += "jmp \(var2)"
+            code += "jmp \(var2)"
 
-            string += "\(var1)"
+            code += "\(var1)"
 
             if(selStat.orExpr == .TWO) {
-                string += generateStatement(selStat.elseStatement!, sT)
+                code += generateStatement(selStat.elseStatement!, sT)
             }
 
-            string += "\(var2)"
+            code += "\(var2)"
         } else {
-            string += "\n"
-            string += PUSH_RAX
+            code += "\n"
+            code += PUSH_RAX
             let (var1, _) = generateNewLabel(labelName: "CONDITIONAL_LABEL")
             sT.endJumpLabel = var1
-            string += generateStatement(selStat.insideStatement!, sT)
-            string += "\(var1)"
+            code += generateStatement(selStat.insideStatement!, sT)
+            code += "\(var1)"
         }
 
-        return string.tabify
+        return code.tabify
     }
 
     // <IterationStatement> ::= "while" "(" <Expression> ")" <Statement>
@@ -285,78 +303,79 @@ class CodeGeneration {
     //                                     [<Expression>] ")" <Statement>
     private func generateIterationStatement(_ itStat: IterationStatement,
                                             _ sT: SymbolTable) -> String {
-        var string = ""
+        var code = ""
         let (var1, var2) = generateNewLabel(labelName: "LOOP_LABEL")
         switch itStat.orExpr {
         case .ONE:
-            string += "\(var2)"
+            code += "\(var2)"
             if let exprOne = itStat.expression {
-                string += generateExpression(exprOne, sT)
+                code += generateExpression(exprOne, sT)
             }
 
-            string += "cmpl $0, %rax"
-            string += "je \(var1)"
+            code += "cmpl $0, %rax"
+            code += "je \(var1)"
 
-            string += generateStatement(itStat.insideStatement!, sT)
+            code += generateStatement(itStat.insideStatement!, sT)
 
-            string += "jmp \(var2)"
-            string += "\(var1)"
+            code += "jmp \(var2)"
+            code += "\(var1)"
             break
         case .TWO:
 
-            string += "\(var2)"
-            string += generateStatement(itStat.insideStatement!, sT)
+            code += "\(var2)"
+            code += generateStatement(itStat.insideStatement!, sT)
 
             if let exprOne = itStat.expression {
-                string += generateExpression(exprOne, sT)
+                code += generateExpression(exprOne, sT)
             }
 
-            string += "cmpl $0, %rax"
-            string += "je \(var1)"
+            code += "cmpl $0, %rax"
+            code += "je \(var1)"
 
-            string += "jmp \(var2)"
-            string += "\(var1)"
+            code += "jmp \(var2)"
+            code += "\(var1)"
             break
         case .THREE:
             if let exprOne = itStat.expression {
-                string += generateExpression(exprOne, sT)
+                code += generateExpression(exprOne, sT)
             }
 
             if let exprTwo = itStat.expression2 {
-                string += generateExpression(exprTwo, sT)
+                code += generateExpression(exprTwo, sT)
             }
 
             if let exprThree = itStat.expression3 {
-                string += generateExpression(exprThree, sT)
+                code += generateExpression(exprThree, sT)
             }
 
-            string += generateStatement(itStat.insideStatement!, sT)
+            code += generateStatement(itStat.insideStatement!, sT)
 
             break
         case .FOUR:
             // TODO: Refactor with above
             // TODO: I believe it is possible to declare a lot of variables, there
-//            var currentVariables
             let sT2 = sT.copyVariables(with: [:])
             if let declar = itStat.declaration {
-                let (var1, var2, var3) = generateDeclaration(declar)
-                sT2.variables[var2] = var3
-                string += var1
+                let (codeVar, variable, varRepr, rbp) = generateDeclaration(declar, sT)
+                sT.rbpValue = rbp
+                sT2.variables[variable] = varRepr
+                code += codeVar
             }
 
             if let exprOne = itStat.expression {
-                string += generateExpression(exprOne, sT2)
+                code += generateExpression(exprOne, sT2)
             }
 
             if let exprTwo = itStat.expression2 {
-                string += generateExpression(exprTwo, sT2)
+                code += generateExpression(exprTwo, sT2)
             }
 
             break
 
         default:
-            fatalError()
+            fatalError("This should not happen")
         }
+        return code.tabify
     }
 
 
@@ -364,36 +383,48 @@ class CodeGeneration {
     // <Expression> ::= <id> "=" <Expression> | <ConditionalExpression>
     private func generateExpression(_ expression: Expression,
                                     _ sT: SymbolTable) -> String {
-        return generateLogicalOrExpression(expression.begin)
+        var code = ""
+        if let id = expression.id {
+            if let variable = sT.variables[id.value] {
+                code += "mov %rax, \(variable.offset)(%rbp)"
+            } else {
+                fatalError("Variable \(id.value) hasn't been initialized yet")
+            }
+        } else if let cond = expression.begin {
+            code += generateConditionalExpression(cond, sT)
+        }
+
+        return code.tabify
     }
 
     // <ConditionalExpression> ::= <LogicalOrExpression> [ "?" <Expression> ":" <ConditionalExpression> ]
     private func generateConditionalExpression(_ cE: ConditionalExpression,
                                                _ sT: SymbolTable) -> String {
-        var string = generateLogicalOrExpression(cE.logicalOrExpression)
-        string += "\n"
+        var code = generateLogicalOrExpression(cE.logicalOrExpression, sT)
+        code += "\n"
 
         if let expression = cE.expression {
-            string += "cmpl $0, %rax"
+            code += "cmpl $0, %rax"
             let (var1, var2) = generateNewLabel(labelName: "CONDITIONAL_LABEL")
-            string += "je \(var1)"
+            code += "je \(var1)"
 
-            string += generateExpression(expression, sT)
+            code += generateExpression(expression, sT)
 
-            string += "jmp \(var2)"
+            code += "jmp \(var2)"
 
-            string += "\(var1)"
-            string += generateConditionalExpression(cE.conditionalExpression!, sT)
+            code += "\(var1)"
+            code += generateConditionalExpression(cE.conditionalExpression!, sT)
 
-            string += "\(var2)"
+            code += "\(var2)"
         }
 
-        return string.tabify
+        return code.tabify
     }
 
     // <LogicalOrExpression> ::= LogicalAndExpression {"||" LogicalAndExpression}
-    func generateLogicalOrExpression(_ lExpr: LogicalOrExpression) -> String {
-        var logExpr = generateLogicalAndExpression(lExpr.begin)
+    func generateLogicalOrExpression(_ lExpr: LogicalOrExpression,
+                                     _ sT: SymbolTable) -> String {
+        var logExpr = generateLogicalAndExpression(lExpr.begin, sT)
 
         for next in lExpr.many {
             let (labelJump, labelEnd) = generateNewLabel(labelName: "JUMP_CLAUSE_OR")
@@ -406,7 +437,7 @@ class CodeGeneration {
                 \(labelJump):
                 """.tabify
 
-            logExpr += generateLogicalAndExpression(next.next)
+            logExpr += generateLogicalAndExpression(next.next, sT)
 
             logExpr += """
                 cmp $0, %rax
@@ -422,8 +453,9 @@ class CodeGeneration {
     }
 
     // <LogicalAndExpression> ::= InclusiveOrExpression {"&&" InclusiveOrExpression}
-    func generateLogicalAndExpression(_ logAndExpr: LogicalAndExpression) -> String {
-        var lAndExpr = generateInclusiveOrExpression(logAndExpr.begin)
+    func generateLogicalAndExpression(_ logAndExpr: LogicalAndExpression,
+                                      _ sT: SymbolTable) -> String {
+        var lAndExpr = generateInclusiveOrExpression(logAndExpr.begin, sT)
 
         for next in logAndExpr.many {
             let (labelJump, labelEnd) = generateNewLabel(labelName: "JUMP_CLAUSE_AND")
@@ -434,7 +466,7 @@ class CodeGeneration {
                 \(labelJump):
                 """.tabify
 
-            lAndExpr += generateInclusiveOrExpression(next.next)
+            lAndExpr += generateInclusiveOrExpression(next.next, sT)
 
             lAndExpr += """
                 cmp $0, %rax
@@ -448,13 +480,14 @@ class CodeGeneration {
     }
 
     // <InclusiveOrExpression> ::= ExclusiveOrExpression {"|" ExclusiveOrExpression}
-    func generateInclusiveOrExpression(_ inclExpr: InclusiveOrExpression) -> String {
-        var gen = generateExclusiveOrExpression(inclExpr.begin)
+    func generateInclusiveOrExpression(_ inclExpr: InclusiveOrExpression,
+                                        _ sT: SymbolTable) -> String {
+        var gen = generateExclusiveOrExpression(inclExpr.begin, sT)
 
         for next in inclExpr.many {
             gen += PUSH_RAX
 
-            gen += generateExclusiveOrExpression(next.next)
+            gen += generateExclusiveOrExpression(next.next, sT)
             gen += POP_RCX
 
             gen += """
@@ -466,13 +499,14 @@ class CodeGeneration {
     }
 
     // <ExclusiveOrExpression> ::= AndExpression {"^" AndExpression}
-    func generateExclusiveOrExpression(_ xorExpr: ExclusiveOrExpression) -> String {
-        var gen = generateAndExpression(xorExpr.begin)
+    func generateExclusiveOrExpression(_ xorExpr: ExclusiveOrExpression,
+                                        _ sT: SymbolTable) -> String {
+        var gen = generateAndExpression(xorExpr.begin, sT)
 
         for next in xorExpr.many {
             gen += PUSH_RAX
 
-            gen += generateAndExpression(next.next)
+            gen += generateAndExpression(next.next, sT)
             gen += POP_RCX
 
             gen += """
@@ -484,13 +518,14 @@ class CodeGeneration {
     }
 
     // <AndExpression> ::= EqualityExpression {"&" EqualityExpression}
-    func generateAndExpression(_ andExpr: AndExpression) -> String {
-        var gen = generateEqualityExpression(andExpr.begin)
+    func generateAndExpression(_ andExpr: AndExpression,
+                               _ sT: SymbolTable) -> String {
+        var gen = generateEqualityExpression(andExpr.begin, sT)
 
         for next in andExpr.many {
             gen += PUSH_RAX
 
-            gen += generateEqualityExpression(next.next)
+            gen += generateEqualityExpression(next.next, sT)
             gen += POP_RCX
 
             gen += """
@@ -502,13 +537,14 @@ class CodeGeneration {
     }
 
     // <EqualityExpression> ::= <RelationalExpression> { ("!=" | "==") <RelationalExpression> }
-    func generateEqualityExpression(_ eExpr: EqualityExpression) -> String {
-        var relExpr = generateRelationalExpression(eExpr.begin)
+    func generateEqualityExpression(_ eExpr: EqualityExpression,
+                                     _ sT: SymbolTable) -> String {
+        var relExpr = generateRelationalExpression(eExpr.begin, sT)
 
         for next in eExpr.many {
             // TODO
             relExpr += PUSH_RAX
-            relExpr += generateRelationalExpression(next.next)
+            relExpr += generateRelationalExpression(next.next, sT)
             relExpr += POP_RCX
 
             relExpr += COMPARE
@@ -522,7 +558,7 @@ class CodeGeneration {
                 setne   %al
                 """.tabify
             } else {
-                fatalError()
+                fatalError("This should not happen")
             }
         }
 
@@ -530,12 +566,13 @@ class CodeGeneration {
     }
 
     // <RelationalExpression> ::= ShiftExpression {("<" | ">" | "<=" | ">=") ShiftExpression}
-    func generateRelationalExpression(_ rExpr: RelationalExpression) -> String {
-        var gen = generateShiftExpression(rExpr.begin)
+    func generateRelationalExpression(_ rExpr: RelationalExpression,
+                                       _ sT: SymbolTable) -> String {
+        var gen = generateShiftExpression(rExpr.begin, sT)
 
         for next in rExpr.many {
             gen += PUSH_RAX
-            gen += generateShiftExpression(next.next)
+            gen += generateShiftExpression(next.next, sT)
             gen += POP_RCX
 
             gen += COMPARE
@@ -557,7 +594,7 @@ class CodeGeneration {
                 setge   %al
                 """.tabify
             } else {
-                fatalError()
+                fatalError("This should not happen")
             }
 
         }
@@ -566,14 +603,15 @@ class CodeGeneration {
     }
 
     // <ShiftExpression> ::= AdditiveExpression {"<<" | ">>" AdditiveExpression}
-    private func generateShiftExpression(_ shiftExpr: ShiftExpression) -> String {
-        var gen = generateAdditiveExpression(shiftExpr.begin)
+    private func generateShiftExpression(_ shiftExpr: ShiftExpression,
+                                         _ sT: SymbolTable) -> String {
+        var gen = generateAdditiveExpression(shiftExpr.begin, sT)
 
         for next in shiftExpr.many {
             // TODO: Unsigned type: do logical shift
             // TODO: Signed type: do arithmetic shift
             gen += PUSH_RAX
-            gen += generateAdditiveExpression(next.next)
+            gen += generateAdditiveExpression(next.next, sT)
             gen += POP_RCX
 
             if(next.operation == .SHIFT_RIGHT) {
@@ -585,7 +623,7 @@ class CodeGeneration {
                 shl %rcx, %rax
                 """.tabify
             } else {
-                fatalError()
+                fatalError("This should not happen")
             }
         }
 
@@ -593,13 +631,14 @@ class CodeGeneration {
     }
 
     // <AdditiveExpression> ::= <Term> { ("+" | "-") <Term> }
-    private func generateAdditiveExpression(_ addExpr: AdditiveExpression) -> String {
-        var gen = generateTerm(addExpr.begin)
+    private func generateAdditiveExpression(_ addExpr: AdditiveExpression,
+                                             _ sT: SymbolTable) -> String {
+        var gen = generateTerm(addExpr.begin, sT)
 
         for next in addExpr.many {
             gen += PUSH_RAX
 
-            gen += generateTerm(next.next)
+            gen += generateTerm(next.next, sT)
             gen += POP_RCX
 
             if(next.operation == .PLUS) {
@@ -616,7 +655,7 @@ class CodeGeneration {
                     mov %rcx, %rax
                     """.tabify
             } else {
-                fatalError()
+                fatalError("This should not happen")
             }
         }
 
@@ -624,12 +663,12 @@ class CodeGeneration {
     }
 
     // Term ::= <Factor> { ("*" | "/" | "%") <Factor> }
-    private func generateTerm(_ term: Term) -> String {
-        var gen = generateFactor(term.begin)
+    private func generateTerm(_ term: Term, _ sT: SymbolTable) -> String {
+        var gen = generateFactor(term.begin, sT)
 
         for next in term.many {
             gen += PUSH_RAX
-            gen += generateFactor(next.next)
+            gen += generateFactor(next.next, sT)
             gen += POP_RCX
 
             if(next.operation == .TIMES) {
@@ -651,7 +690,7 @@ class CodeGeneration {
                     mov %rdx, %rax
                     """.tabify
             } else {
-                fatalError()
+                fatalError("This should not happen")
             }
 
         }
@@ -660,16 +699,27 @@ class CodeGeneration {
     }
 
     // <Factor> ::= "(" <Expression> ")" | <unaryOp> <Factor> | <int> | <id>
-    private func generateFactor(_ factor: Factor) -> String {
+    private func generateFactor(_ factor: Factor, _ sT: SymbolTable) -> String {
         switch factor.orExpr {
         case .ONE:
-            return generateExpression(factor.expression!)
+            return generateExpression(factor.expression!, sT)
         case .TWO:
             // TODO: THis feels odd...
-            let gFactor = generateFactor(factor.factor!)
+            let gFactor = generateFactor(factor.factor!, sT)
             return gFactor + generateUnaryOperation(token: factor.unaryOp!)
         case .THREE:
-            return generateUnaryOperation(token: factor.intT!)
+            // var_offset = var_map.find("a") //find location of variable "a" on the stack
+                                 //should fail if it hasn't been declared yet
+            //            emit "    movl {}(%ebp), %eax".format(var_offset) //retrieve value of variable
+            return generateUnaryOperation(token: factor.id!)
+        case .FOUR:
+            // var_offset = var_map.find("a") //find location of variable "a" on the stack
+                                 //should fail if it hasn't been declared yet
+            //            emit "    movl {}(%ebp), %eax".format(var_offset) //retrieve value of variable
+
+            return "mov \(sT.variables[factor.id!.value]!.offset)(%rbp), %rax".tabify
+        default:
+            fatalError("This should not happen")
         }
     }
 
@@ -697,7 +747,7 @@ class CodeGeneration {
                 mov $\(value), %rax
                 """.tabify
         default:
-            fatalError()
+            fatalError("This should not happen")
         }
     }
 }

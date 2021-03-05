@@ -46,7 +46,7 @@ class Parser {
         let eaten = eatToken()
 
         if(eaten != token) {
-            fatalError()
+            fatalError("Should have been \"(eaten.value)\" but it was \"(token.value)\"")
         }
 
         return eaten
@@ -61,7 +61,7 @@ class Parser {
             }
         }
 
-        fatalError()
+        fatalError("Was expected one of \(oneOf) but it was \(eaten.value)")
     }
 
     private func matchDelimiter(token: Token) {
@@ -216,7 +216,7 @@ class Parser {
                                     statement: statement,
                                     depth: depth + 1)
         } else {
-            fatalError()
+            fatalError("Was expected either case, default or an identifier but it was \(eaten.value)")
         }
     }
 
@@ -240,19 +240,19 @@ class Parser {
     //                   | "break" ";"
     //                   | "return" [<Expression>] ";"
     private func parseJumpStatement(depth: Int) -> JumpStatement {
-        let next = eatToken()
+        let eaten = eatToken()
 
-        if(next == .GOTO) {
+        if(eaten == .GOTO) {
             let id = eatToken()
             matchDelimiter(token: .SEMICOLON)
             return JumpStatement(id: id, depth: depth + 1)
-        } else if(next == .CONTINUE) {
+        } else if(eaten == .CONTINUE) {
             matchDelimiter(token: .SEMICOLON)
             return JumpStatement(orExpr: .TWO, depth: depth + 1)
-        } else if(next == .BREAK) {
+        } else if(eaten == .BREAK) {
             matchDelimiter(token: .SEMICOLON)
             return JumpStatement(orExpr: .THREE, depth: depth + 1)
-        } else if(next == .RETURN) {
+        } else if(eaten == .RETURN) {
             var expression: Expression? = nil
 
             if(checkToken() != .SEMICOLON) {
@@ -262,7 +262,7 @@ class Parser {
 
             return JumpStatement(expression: expression, depth: depth + 1)
         } else {
-            fatalError()
+            fatalError("Was expecting either continue, goto, break or a return but it was \(eaten.value)")
         }
     }
 
@@ -271,7 +271,7 @@ class Parser {
     //                                                    <Statement>
     //                        | "switch" "(" <Expression> ")" <Statement>
     private func parseSelectionStatement(depth: Int) -> SelectionStatement {
-        let next = matchOneOf(oneOf: [.IF, .SWITCH])
+        let eaten = matchOneOf(oneOf: [.IF, .SWITCH])
 
         matchDelimiter(token: .LEFT_PAREN)
         let expression = parseExpression(depth: depth + 1)
@@ -279,7 +279,7 @@ class Parser {
 
         let statement = parseStatement(depth: depth + 1)
 
-        if(next == .IF) {
+        if(eaten == .IF) {
             let elze = checkToken()
 
             if(elze == .ELSE) {
@@ -295,7 +295,7 @@ class Parser {
             return SelectionStatement(expression: expression,
                                       insideStatement: statement,
                                       depth: depth + 1, isSwitch: false)
-        } else if(next == .SWITCH) {
+        } else if(eaten == .SWITCH) {
             return SelectionStatement(expression: expression,
                                       insideStatement: statement,
                                       depth: depth + 1, isSwitch: true)
@@ -311,13 +311,13 @@ class Parser {
     //                        | "for" "(" <Declaration> [Expression] ";"
     //                                    <Expression> ")" <Statement>
     private func parseIterationStatement(depth: Int) -> IterationStatement {
-        let next = matchOneOf(oneOf: [.WHILE, .DO, .FOR])
+        let eaten = matchOneOf(oneOf: [.WHILE, .DO, .FOR])
 
         let next2 = checkToken()
 
         if(next2 == .LEFT_PAREN) {
             matchDelimiter(token: .LEFT_PAREN)
-            if(next == .WHILE) {
+            if(eaten == .WHILE) {
 //                "while" "(" <Expression> ")" <Statement>
                 let expression = parseExpression(depth: depth + 1)
                 matchDelimiter(token: .RIGHT_PAREN)
@@ -325,7 +325,7 @@ class Parser {
                 return IterationStatement(expression: expression,
                                           insideStatement: statement,
                                           isWhile: true, depth: depth + 1)
-            } else if(next == .FOR) {
+            } else if(eaten == .FOR) {
 //                "for" ( [<Expression>] ";" [<Expression>] ";"
 //                        [<Expression>] ")" <Statement>
 //              | "for" "(" [<Declaration>] [Expression] ";"
@@ -570,7 +570,7 @@ class Parser {
             if(isCorrectToken(token: eaten2, isTok: .RIGHT_PAREN)) {
                 return Factor(expression: expression, depth: depth)
             } else {
-                fatalError()
+                fatalError("Found \"\(checkToken().value)\" while it should have been \")\"")
             }
         } else if(checkUnaryOperation(token: eaten)) {
             return Factor(unaryOp: eaten,
@@ -579,9 +579,9 @@ class Parser {
         }
 
         if case .ID(_) = eaten {
-            return Factor(id: eaten, depth: depth)
+            return Factor(id: eaten, depth: depth, isId: true)
         }
-        print(eaten)
+
         if case .CONSTANT_INT(_) = eaten {
             return Factor(id: eaten, depth: depth)
         } else {
