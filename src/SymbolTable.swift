@@ -15,7 +15,7 @@ enum Types {
 
 class VariablesRepresentation {
     var offset = 0
-
+//    var alignment
     // TODO: Change that into array of types ?
     var type = Types.NONE
     // TODO: setSize as well ?

@@ -121,8 +121,6 @@ class CodeGeneration {
             }
         }
 
-        code += "add $\(currentVars.count*8), %rsp"
-
         return code.tabify
     }
 
@@ -130,17 +128,19 @@ class CodeGeneration {
     private func generateDeclaration(_ declaration: Declaration,
                                      _ sT: SymbolTable) -> (String, String, VariablesRepresentation, Int) {
         var code = ""
-        if let expr = declaration.expression {
-            code += generateExpression(expr, sT)
-            code += PUSH_RAX
-        }
 
         let varRepr = VariablesRepresentation()
 
         // TODO: INT and other types
         var rbpValue = sT.rbpValue
         rbpValue -= 8
-        varRepr.offset = 0 - rbpValue
+        varRepr.offset = rbpValue
+
+        if let expr = declaration.expression {
+            code += generateExpression(expr, sT)
+            code += "mov %rax, \(varRepr.offset)(%tbp)"
+            code += PUSH_RAX
+        }
 
         // TODO: Assign a type to declaration
         varRepr.type = .INT
