@@ -49,10 +49,11 @@ class CodeGeneration {
         labelsMap["LOOP_LABEL"] = 0
     }
 
+    // TODO: Refactor
     private func generateNewLabel(labelName: String) -> (String, String) {
         labelsMap[labelName]! += 1
-        return ("__\(labelName)\(labelsMap[labelName]!)",
-            "__\(labelName)__end\(labelsMap[labelName]!)__")
+        return ("__\(labelName)__\(labelsMap[labelName]!)__:",
+            "__\(labelName)__SECOND__\(labelsMap[labelName]!)__:")
     }
 
     public func generateCode() -> String {
@@ -102,7 +103,6 @@ class CodeGeneration {
                 if let _ = currentVars[variable] {
                     fatalError("Variable \(variable) has already been declared")
                 } else {
-//                    code += PUSH_RAX
                     currentVars[variable] = varRepr
                 }
 
@@ -136,9 +136,7 @@ class CodeGeneration {
         rbpValue -= 4
         varRepr.offset = 0 - rbpValue
         varRepr.type = "int"
-//        declaration.
-//        return generateExpression(declaration.expression)
-        // TODO...
+
         return (code, declaration.id.value, varRepr, rbpValue)
     }
 
@@ -166,8 +164,6 @@ class CodeGeneration {
         }
 
         return code.tabify
-//        return "\(generateExpression(statement.expression))" +
-//            "ret".tabify
     }
 
     // <LabeledStatement> ::= <id> : <Statement>
@@ -310,6 +306,8 @@ class CodeGeneration {
             code += "\(var2)"
             if let exprOne = itStat.expression {
                 code += generateExpression(exprOne, sT)
+            } else {
+                fatalError("Empty while")
             }
 
             code += "cmpl $0, %rax"
@@ -327,6 +325,8 @@ class CodeGeneration {
 
             if let exprOne = itStat.expression {
                 code += generateExpression(exprOne, sT)
+            } else {
+                fatalError("Empty while.")
             }
 
             code += "cmpl $0, %rax"
@@ -340,9 +340,17 @@ class CodeGeneration {
                 code += generateExpression(exprOne, sT)
             }
 
-            if let exprTwo = itStat.expression2 {
-                code += generateExpression(exprTwo, sT)
+            code += "\(var2)"
+
+            if let condition = itStat.expression2 {
+                code += generateExpression(condition, sT)
+            } else {
+                // Making sure it loop forever
+                code += "mov $1, %rax"
             }
+
+            code += "cmpl $0, %rax"
+            code += "je \(var1)"
 
             if let exprThree = itStat.expression3 {
                 code += generateExpression(exprThree, sT)
@@ -350,6 +358,8 @@ class CodeGeneration {
 
             code += generateStatement(itStat.insideStatement!, sT)
 
+            code += "jmp \(var2)"
+            code += "\(var1)"
             break
         case .FOUR:
             // TODO: Refactor with above
@@ -362,16 +372,28 @@ class CodeGeneration {
                 code += codeVar
             }
 
+            code += "\(var2)"
             if let exprOne = itStat.expression {
                 code += generateExpression(exprOne, sT2)
+            } else {
+                // Making sure it loop forever
+                code += "mov $1, %rax"
             }
+
+            code += "cmpl $0, %rax"
+            code += "je \(var1)"
 
             if let exprTwo = itStat.expression2 {
                 code += generateExpression(exprTwo, sT2)
             }
 
-            break
+            code += "jmp \(var2)"
+            code += "\(var1)"
 
+            // Delete the initialized variable
+            // TODO: Maybe more than one...
+            code += POP_RCX
+            break
         default:
             fatalError("This should not happen")
         }
@@ -708,14 +730,8 @@ class CodeGeneration {
             let gFactor = generateFactor(factor.factor!, sT)
             return gFactor + generateUnaryOperation(token: factor.unaryOp!)
         case .THREE:
-            // var_offset = var_map.find("a") //find location of variable "a" on the stack
-                                 //should fail if it hasn't been declared yet
-            //            emit "    movl {}(%ebp), %eax".format(var_offset) //retrieve value of variable
             return generateUnaryOperation(token: factor.id!)
         case .FOUR:
-            // var_offset = var_map.find("a") //find location of variable "a" on the stack
-                                 //should fail if it hasn't been declared yet
-            //            emit "    movl {}(%ebp), %eax".format(var_offset) //retrieve value of variable
 
             return "mov \(sT.variables[factor.id!.value]!.offset)(%rbp), %rax".tabify
         default:
