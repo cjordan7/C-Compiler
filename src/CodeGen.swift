@@ -85,6 +85,9 @@ class CodeGeneration {
 
         .global _\(nameFunc)
         _\(nameFunc):
+        push %rbp
+        mov %rsp, %rbp
+
         \(generateCompoundStatement(function.compoundStatement, sT))
         \(sT.jumpEndFunction)
         """
@@ -134,7 +137,7 @@ class CodeGeneration {
 
         let varRepr = VariablesRepresentation()
 
-        // TODO "int", other types...
+        // TODO: INT and other types
         var rbpValue = sT.rbpValue
         rbpValue -= 8
         varRepr.offset = 0 - rbpValue
@@ -143,6 +146,50 @@ class CodeGeneration {
         varRepr.type = .INT
 
         return (code, declaration.id.value, varRepr, rbpValue)
+    }
+
+    private func generateAssignmentOperator(assignment: Token, offset: Int) -> String {
+        var code = ""
+        switch assignment {
+        case .EQUAL:
+            code += "mov %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_TIMES:
+            code += "imul %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_DIVIDE:
+            code += "idiv %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_MODULO:
+            code += "idiv %rax, \(offset)(%rbp)"
+            code += "mov %rdx, \(offset)(%rbp)"
+            break
+        case .EQUAL_PLUS:
+            code += "add %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_MINUS:
+            code += "sub %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_SHIFT_LEFT:
+            code += "shl %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_SHIFT_RIGHT:
+            code += "shr %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_AND:
+            code += "and %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_XOR:
+            code += "xor %rax, \(offset)(%rbp)"
+            break
+        case .EQUAL_OR:
+            code += "or %rax, \(offset)(%rbp)"
+            break
+        default:
+            fatalError("This should not happen")
+        }
+
+        return code
     }
 
     // <Statement> ::= <ExpressionStatement>
@@ -255,6 +302,9 @@ class CodeGeneration {
             if let expres = jumStat.expression {
                 code += generateExpression(expres, sT)
             }
+
+            code += "mov %rbp, %rsp"
+            code += "pop %rbp"
 
             code += "ret"
             break
@@ -411,13 +461,15 @@ class CodeGeneration {
 
 
 
-    // <Expression> ::= <id> "=" <Expression> | <ConditionalExpression>
+    // <Expression> ::= <id> <AssignmentOperator> <Expression> | <ConditionalExpression>
     private func generateExpression(_ expression: Expression,
                                     _ sT: SymbolTable) -> String {
         var code = ""
         if let id = expression.id {
             if let variable = sT.variables[id.value] {
-                code += "mov %rax, \(variable.offset)(%rbp)"
+                code += generateExpression(expression.expr!, sT)
+                code += generateAssignmentOperator(assignment: expression.assignmentOperator!,
+                                                   offset: variable.offset)
             } else {
                 fatalError("Variable \(id.value) hasn't been initialized yet")
             }

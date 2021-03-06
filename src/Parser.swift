@@ -76,6 +76,36 @@ class Parser {
         //        }
     }
 
+    // <AssignmentOperator> ::= =
+    //                         | *=
+    //                         | /=
+    //                         | %=
+    //                         | +=
+    //                         | -=
+    //                         | <<=
+    //                         | >>=
+    //                         | &=
+    //                         | ^=
+    //                         | |=
+    private func checkAssignmentOperator() -> Bool {
+        switch checkToken() {
+        case .EQUAL, // =
+             .EQUAL_TIMES, // *-
+             .EQUAL_DIVIDE, // /=
+             .EQUAL_MODULO, // %=
+             .EQUAL_PLUS, // +=
+             .EQUAL_MINUS, // -=
+             .EQUAL_SHIFT_LEFT, // <<=
+             .EQUAL_SHIFT_RIGHT, // >>=
+             .EQUAL_AND, // &=
+             .EQUAL_XOR, // ^=
+             .EQUAL_OR: // |=
+            return true
+        default:
+            return false
+        }
+    }
+
     // =================================================================
     // Functions for Recursive Descent Parsing
 
@@ -131,19 +161,18 @@ class Parser {
         return CompoundStatement(many: many, depth: depth + 1)
     }
 
-    // <Declaration> ::= "int" <id> [ = <Expression> ] ";"
+    // <Declaration> ::= "int" <id> [ <AssignmentOperator> <Expression> ] ";"
     private func parseDeclaration(depth: Int) -> Declaration {
         matchDelimiter(token: .INT)
 
         let id = eatToken()
 
         if case .ID(_) = id {} else {
-            fatalError()
+            fatalError("I was expecting an identifier")
         }
 
         var expr: Expression? = nil
-        print(id)
-        print(checkToken())
+
         if(checkToken() == .EQUAL) {
             matchDelimiter(token: .EQUAL)
             expr = parseExpression(depth: depth + 1)
@@ -403,10 +432,17 @@ class Parser {
         var id = checkToken()
         if case .ID(_) = id {
             id = eatToken()
-            matchDelimiter(token: .EQUAL)
+
+            if(!checkAssignmentOperator()) {
+                fatalError("I was expecting an assignment operator.")
+            }
+
+            let assignmentOperator = eatToken()
             let parsed = parseExpression(depth: depth + 1)
 
-            return Expression(id: id, expr: parsed, depth: depth + 1)
+            return Expression(id: id, expr: parsed,
+                              assignmentOperator: assignmentOperator,
+                              depth: depth + 1)
         }
 
         let begin = parseConditionalExpression(depth: depth + 1)

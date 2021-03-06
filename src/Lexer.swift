@@ -51,8 +51,8 @@ public enum Token: Equatable {
     case TILDE // ~
     case MODULO // %
 
-    case INCREMENT
-    case DECREMENT
+    case INCREMENT // ++
+    case DECREMENT // --
     
     
     // Logical Operators

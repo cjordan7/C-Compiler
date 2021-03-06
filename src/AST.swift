@@ -151,7 +151,7 @@ class CompoundStatement: Node {
     }
 }
 
-// <Declaration> ::= "int" <id> [ = <Expression> ] ";"
+// <Declaration> ::= "int" <id> [ "=" <Expression> ] ";"
 class Declaration: Node {
     var depth: Int
 
@@ -438,7 +438,7 @@ class IterationStatement: Node, BNFOrExpression {
 
 }
 
-// <Expression> ::= <id> "=" <Expression> | <ConditionalExpression>
+// <Expression> ::= <id> <AssignmentOperator> <Expression> | <ConditionalExpression>
 class Expression: Node, BNFOrExpression {
     var orExpr: Choice
 
@@ -453,6 +453,7 @@ class Expression: Node, BNFOrExpression {
     var expr: Expression? = nil
 
     var begin: ConditionalExpression? = nil
+    var assignmentOperator: Token? = nil
 
     init(begin: ConditionalExpression,
         depth: Int) {
@@ -461,13 +462,30 @@ class Expression: Node, BNFOrExpression {
         self.orExpr = .ONE
     }
 
-    init(id: Token, expr: Expression, depth: Int) {
+    init(id: Token, expr: Expression, assignmentOperator: Token, depth: Int) {
         self.id = id
         self.expr = expr
         self.depth = depth
         self.orExpr = .TWO
+        self.assignmentOperator = assignmentOperator
     }
 }
+
+// The <AssignmentOperator> isn't represented as a node.
+// I only use it as a variable when it is necessary
+// In the parsing phase, I'll check if the token is correct.
+// If it is, I save it.
+// <AssignmentOperator> ::= =
+//                         | *=
+//                         | /=
+//                         | %=
+//                         | +=
+//                         | -=
+//                         | <<=
+//                         | >>=
+//                         | &=
+//                         | ^=
+//                         | |=
 
 
 // <ConditionalExpression> ::= <LogicalOrExpression> [ "?" <Expression> ":" <ConditionalExpression> ]

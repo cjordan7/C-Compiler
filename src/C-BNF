@@ -48,7 +48,19 @@ Implemented:
 
 <Function> ::= "int" <id> "(" ")" <CompoundStatement>
 <CompoundStatement> ::= "{" {<Statement> | <Declaration>} "}"
-<Declaration> ::= "int" <id> [ = <Expression> ] ";"
+<Declaration> ::= "int" <id> [ <AssignmentOperator> <Expression> ] ";"
+
+<AssignmentOperator> ::= =
+                        | *=
+                        | /=
+                        | %=
+                        | +=
+                        | -=
+                        | <<=
+                        | >>=
+                        | &=
+                        | ^=
+                        | |=
 
 <Statement> ::= <ExpressionStatement>
               | <CompoundStatement>
@@ -76,7 +88,7 @@ Implemented:
                         | "do" <Statement> "while" "(" <Expression> ) ";"
                         | "for" ( [<Expression>] ";" [<Expression>] ";" [<Expression>] ")" <Statement>
 
-<Expression> ::= <id> "=" <Expression> | <ConditionalExpression>
+<Expression> ::= <id> <AssignmentOperator> <Expression> | <ConditionalExpression>
 
 <ConditionalExpression> ::= <LogicalOrExpression> [ "?" <Expression> ":" <ConditionalExpression> ]
 <LogicalOrExpression> ::= LogicalAndExpression {"||" LogicalAndExpression}

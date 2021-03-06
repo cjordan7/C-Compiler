@@ -102,18 +102,6 @@
 <assignment-expression> ::= <conditional-expression>
                           | <unary-expression> <assignment-operator> <assignment-expression>
 
-<assignment-operator> ::= =
-                        | *=
-                        | /=
-                        | %=
-                        | +=
-                        | -=
-                        | <<=
-                        | >>=
-                        | &=
-                        | ^=
-                        | |=
-
 <unary-operator> ::= &
                    | *
                    | +
