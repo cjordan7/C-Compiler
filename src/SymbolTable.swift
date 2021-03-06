@@ -8,11 +8,16 @@
 
 import Foundation
 
+enum Types {
+    case INT
+    case NONE
+}
+
 class VariablesRepresentation {
     var offset = 0
 
     // TODO: Change that into array of types ?
-    var type = ""
+    var type = Types.NONE
     // TODO: setSize as well ?
 //    var
 }

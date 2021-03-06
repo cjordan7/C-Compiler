@@ -73,13 +73,14 @@ class CodeGeneration {
 
         // TODO: Maybe not unique with several files
         sT.currentFunction = nameFunc
-        // Add functions to Symbol Table to it
+        // Add functions to Symbol Table
         sT.functions[nameFunc] = "int"
 
         // TODO: Change this and put it in functions
         sT.jumpEndFunction = "__FUNCTION__END__\(nameFunc)__"
 
-        // TODO Generate variables
+        // TODO: Generate variables
+        // TODO: global should only be used
         return """
 
         .global _\(nameFunc)
@@ -137,7 +138,9 @@ class CodeGeneration {
         var rbpValue = sT.rbpValue
         rbpValue -= 8
         varRepr.offset = 0 - rbpValue
-        varRepr.type = "int"
+
+        // TODO: Assign a type to declaration
+        varRepr.type = .INT
 
         return (code, declaration.id.value, varRepr, rbpValue)
     }
@@ -248,8 +251,12 @@ class CodeGeneration {
             }
             break
         case .FOUR: // Return expression
-            // TODO: ...
-            fatalError("TODO...")
+
+            if let expres = jumStat.expression {
+                code += generateExpression(expres, sT)
+            }
+
+            code += "ret"
             break
         default:
             fatalError("This should not happen")
@@ -734,7 +741,16 @@ class CodeGeneration {
         case .THREE:
             return generateUnaryOperation(token: factor.id!)
         case .FOUR:
-            return "mov \(sT.variables[factor.id!.value]!.offset)(%rbp), %rax".tabify
+            if let variable = sT.variables[factor.id!.value] {
+                switch variable.type {
+                case .INT:
+                    return "movq \(variable.offset)(%rbp), %eax".tabify
+                case .NONE:
+                    fatalError("This should not happen")
+                }
+            } else {
+                fatalError("This should not happen")
+            }
         default:
             fatalError("This should not happen")
         }
@@ -761,7 +777,7 @@ class CodeGeneration {
                 """.tabify
         case .CONSTANT_INT(let value):
             return """
-                mov $\(value), %rax
+                movq $\(value), %eax ; Push a constant double word to eax
                 """.tabify
         default:
             fatalError("This should not happen")
