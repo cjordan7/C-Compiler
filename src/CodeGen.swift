@@ -117,6 +117,8 @@ class CodeGeneration {
             }
         }
 
+        code += "add $\(currentVars.count*8), %rsp"
+
         return code.tabify
     }
 
@@ -133,7 +135,7 @@ class CodeGeneration {
 
         // TODO "int", other types...
         var rbpValue = sT.rbpValue
-        rbpValue -= 4
+        rbpValue -= 8
         varRepr.offset = 0 - rbpValue
         varRepr.type = "int"
 
@@ -732,7 +734,6 @@ class CodeGeneration {
         case .THREE:
             return generateUnaryOperation(token: factor.id!)
         case .FOUR:
-
             return "mov \(sT.variables[factor.id!.value]!.offset)(%rbp), %rax".tabify
         default:
             fatalError("This should not happen")
